@@ -1,3 +1,4 @@
+from random import random, randrange
 import pygame,sys
 from numpy import sqrt
 
@@ -6,26 +7,27 @@ import pygame,sys
 from pygame.math import Vector2 as vc
 
 pygame.init()
-window=pygame.display.set_mode((600,600))
+window=pygame.display.set_mode((1280,700))
 clock=pygame.time.Clock()
 
 class Particle:
-    def __init__(self,pos,old_pos,acc,origin) :
+    def __init__(self,pos,old_pos,acc,anchor) :
         self.pos=vc(pos[0],pos[1])
         self.old_pos=vc(old_pos[0],old_pos[1])
         self.vel=vc()
         self.friction=0.012
         self.acc=acc
-        self.origin=origin
+        self.anchor=anchor
         self.rect=pygame.Rect(self.pos[0]-20,self.pos[1]-20,40,40)
 
     def move(self):
-        if not self.origin:
+        if not self.anchor:
             self.vel=self.pos-self.old_pos
             self.old_pos=self.pos
             #self.vel.x*=self.friction
-            self.pos=self.pos+self.vel+self.acc
+            self.pos=self.pos+self.vel+self.acc*0.03*0.03
         else:
+            self.rect=pygame.Rect(self.pos[0]-20,self.pos[1]-20,40,40)
             pygame.draw.rect(window,(255,0,0),self.rect,5)
             if self.rect.collidepoint(pygame.mouse.get_pos()):
                 print('true')
@@ -65,33 +67,58 @@ class Link:
 
         d=sqrt(dx*dx+dy*dy)
 
-        differnce=(self.resting_distance-d)/d
+        differnce=(self.resting_distance-d)/d*0.5
 
-        offset_x=dx*0.5*differnce
-        offset_y=dy*0.5*differnce
-        if not self.p1.origin:
+        offset_x=dx*differnce*0.8
+        offset_y=dy*differnce*0.8
+        if not self.p1.anchor:
             self.p1.pos.x+=offset_x
             self.p1.pos.y+=offset_y
-
-        self.p2.pos.x-=offset_x
-        self.p2.pos.y-=offset_y
+        if not self.p2.anchor:
+            self.p2.pos.x-=offset_x
+            self.p2.pos.y-=offset_y
 
     def drawlink(self,screen):
-        pygame.draw.line(screen,(255,255,255),self.p1.pos,self.p2.pos,2)
+        if self.p1.anchor:   
+            pygame.draw.line(screen,(255,255,255),self.p1.pos,self.p2.old_pos,2)
+        elif self.p2.anchor:
+            pygame.draw.line(screen,(255,255,255),self.p1.old_pos,self.p2.pos,2)
+        else:
+            pygame.draw.line(screen,(255,255,255),self.p1.old_pos,self.p2.old_pos,2)
 
 
 
 
 
 
-particul0=Particle((300,20),(300,20),vc(0,0),True)
-particul2=Particle((350,20),(350,20),vc(0,1),False)
-particul3=Particle((400,20),(350,20),vc(0,1),False)
-particul4=Particle((300,20),(300,20),vc(0,1),False)
+particul0=Particle((600,20),(600,20),vc(0,0),True)
 
-link1=Link(particul0,particul2,100)
-link2=Link(particul2,particul3,100)
-link3=Link(particul3,particul4,100)
+particules=[particul0]
+
+links=[]
+
+a=20
+
+
+cloth=[[Particle((0,0),(0,0),vc(0,1),False) for i in range(50)]for j in range(50)]
+cloth_links=[]
+
+y=30
+for i in range(20):
+    x=400
+    for j in range(20):
+        anchor=False
+        if i==0 and j==0 or i==0 and j==49:
+            anchor=True
+        cloth[i][j]=Particle((x,y),(x,y),vc(0,10),anchor)
+        x+=10
+    y+=10
+
+for i in range(19):
+    for j in range(19):
+        cloth_links.append(Link(cloth[i][j],cloth[i][j+1],10))
+        cloth_links.append(Link(cloth[i][j],cloth[i+1][j],10))
+
 
 
 while True:
@@ -99,21 +126,16 @@ while True:
     if event.type==pygame.QUIT:
         sys.exit()
     window.fill((0,0,0))
-    pygame.draw.circle(window,(255,255,255),particul0.pos,20)
-    pygame.draw.circle(window,(255,255,255),particul2.pos,20)
-    pygame.draw.circle(window,(255,255,255),particul3.pos,20)
-    pygame.draw.circle(window,(255,255,255),particul4.pos,20)
-    particul0.move()
-    particul2.move()
-    particul3.move()
-    particul4.move()
-    link1.constraint()
-    link1.drawlink(window)
-    link2.constraint()
-    link2.drawlink(window)
-    #link3.constraint()
-    #link3.drawlink(window)
-    #particul0.keepinwindow(20,600,600)
-    particul2.keepinwindow(20,600,600)
+    for i in range(50):
+        for j in range(50):
+            pygame.draw.circle(window,(255,255,255),cloth[i][j].pos,1)
+            cloth[i][j].move()
+            cloth[i][i].keepinwindow(1,1280,700)
+    
+    for link in cloth_links:
+        link.constraint()
+        link.drawlink(window)
     pygame.display.flip()
+    fp=clock.get_fps()
     clock.tick(60)
+    print(fp)
