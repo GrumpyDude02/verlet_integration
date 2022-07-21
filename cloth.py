@@ -95,9 +95,9 @@ for i in range(20):
     x=400
     for j in range(20):
         anchor=False
-        if i==0  :
+        if i==0 and j==0 or i==0 and j==19 :
             anchor=True
-        cloth[i][j]=Particle((x,y),(x,y),vc(0,10),anchor)
+        cloth[i][j]=Particle((x,y),(x,y),vc(0,5),anchor)
         x+=20
     y+=20
 
